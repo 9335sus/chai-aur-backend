@@ -1,36 +1,145 @@
-import express from "express"
-import cors from "cors"
-import cookieParser from "cookie-parser"
+import express from "express";
+import cors from "cors";
+import cookieParser from "cookie-parser";
 
-// Creating an Express application
-const app = express()
+/*
+=====================================================
+EXPRESS APP OVERVIEW
+-----------------------------------------------------
+WHAT:
+- Express application initialize karta hai
+- Backend server ka core setup yahin hota hai
+- Saare middlewares aur routes yahin register hote hain
 
-// Setting up CORS middleware
-app.use(cors({
-    origin: process.env.CROS_ORIGIN,  // Specifies which domain(s) are allowed to make requests (e.g., frontend URL)
-    credentials: true                 // Allows credentials (cookies, authorization headers) in cross-origin requests
-}))
-// CORS stands for Cross-Origin Resource Sharing
-// It is required when frontend and backend are running on different domains or ports
+WHY:
+- Express lightweight aur fast framework hai
+- Backend logic ko structured banane ke liye
+- API development easy aur scalable hota hai
 
-// Body parsing middleware
-app.use(express.json({ limit: "16kb" }))  
-// Parses incoming requests with JSON payloads
-// Size limit is applied to protect the server from very large payloads
+WHEN:
+- Server start hone se pehle load hota hai
+- index.js / server.js se import kiya jaata hai
+=====================================================
+*/
 
-app.use(express.urlencoded({ extended: true, limit: "16kb" }))
-// Parses URL-encoded data (commonly used in form submissions)
-// extended:true allows parsing of complex and nested objects
+// Express application create kar rahe hain
+const app = express();
 
-// Middleware to serve static files
-app.use(express.static("public"))
-// Makes files inside the "public" folder directly accessible to the client
-// Useful for serving images, CSS, JavaScript files, or other static assets
+/*
+=====================================================
+CORS MIDDLEWARE
+-----------------------------------------------------
+WHAT:
+- Frontend aur backend ke beech communication allow karta hai
+- Cross-origin requests ko handle karta hai
 
-// Middleware to parse cookies
-app.use(cookieParser())
-// Parses cookies from incoming HTTP requests and stores them in req.cookies
-// Helps in easily reading and managing cookies on the backend
+WHY:
+- Frontend aur backend alag domain/port pe hote hain
+- Cookies aur auth headers allow karne ke liye
+- Security ke saath controlled access dene ke liye
 
-// Exporting the app so it can be imported and used in the server or other files
-export { app }
+WHEN:
+- Har incoming request pe run hota hai
+- API request process hone se pehle execute hota hai
+=====================================================
+*/
+app.use(
+  cors({
+    origin: process.env.CROS_ORIGIN, // Allowed frontend URL
+    credentials: true // Cookies & auth headers allow karta hai
+  })
+);
+
+/*
+=====================================================
+JSON BODY PARSER
+-----------------------------------------------------
+WHAT:
+- Incoming JSON request body ko parse karta hai
+- Data ko req.body me available karata hai
+
+WHY:
+- APIs me JSON data commonly use hota hai
+- Request data ko easily access karne ke liye
+
+WHEN:
+- POST / PUT / PATCH requests ke time
+- Controller ke run hone se pehle
+=====================================================
+*/
+app.use(express.json({ limit: "16kb" }));
+
+/*
+=====================================================
+URL-ENCODED BODY PARSER
+-----------------------------------------------------
+WHAT:
+- Form submission data ko parse karta hai
+- URL-encoded payload handle karta hai
+
+WHY:
+- HTML forms ka data read karne ke liye
+- Nested objects ko support karne ke liye
+
+WHEN:
+- Form-based requests ke time
+- Login / signup jaise forms me
+=====================================================
+*/
+app.use(express.urlencoded({ extended: true, limit: "16kb" }));
+
+/*
+=====================================================
+STATIC FILES MIDDLEWARE
+-----------------------------------------------------
+WHAT:
+- Public folder ke files ko directly access allow karta hai
+- Images, CSS, JS jaise assets serve karta hai
+
+WHY:
+- Static resources ko efficiently serve karne ke liye
+- Repeated processing se bachne ke liye
+
+WHEN:
+- Client static file request karta hai
+- Response directly Express se serve hota hai
+=====================================================
+*/
+app.use(express.static("public"));
+
+/*
+=====================================================
+COOKIE PARSER MIDDLEWARE
+-----------------------------------------------------
+WHAT:
+- Incoming request ke cookies ko parse karta hai
+- Cookies ko req.cookies me store karta hai
+
+WHY:
+- Authentication tokens (refresh token) read karne ke liye
+- Cookie-based auth implement karne ke liye
+
+WHEN:
+- Har request ke time run hota hai
+- Auth middleware se pehle execute hota hai
+=====================================================
+*/
+app.use(cookieParser());
+
+/*
+=====================================================
+EXPORT APP
+-----------------------------------------------------
+WHAT:
+- Express app ko export karta hai
+
+WHY:
+- Server start file (index.js) me use karne ke liye
+- Testing aur scalability ke liye
+
+WHEN:
+- Server bootstrap ke time import hota hai
+=====================================================
+*/
+export { app };
+ 

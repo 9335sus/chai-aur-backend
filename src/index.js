@@ -1,60 +1,134 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
 import connectDB from "./DB/index.js";
-import { app } from "./app.js";  // Yeh maan ke chal rahe hain ki tumhara express app app.js mein hai
+import { app } from "./app.js";
 
-// dotenv ko configure kar rahe hain taaki .env file se environment variables load ho jayein
-dotenv.config({
-    path: './.env'  // yeh path .env file ka hai, agar alag location pe hai to change karna padega
-});
+/*
+=====================================================
+ENVIRONMENT VARIABLES CONFIGURATION
+=====================================================
 
-// MongoDB se connection banane ki koshish kar rahe hain
-connectDB()
-.then(() => {
-    // Agar DB successfully connect ho gaya to Express server start karenge
-    app.listen(process.env.PORT || 8000, () => {
-        // Server successfully chal raha hai toh ye message print hoga console me
-        console.log(`Server is running at port: ${process.env.PORT || 8000}`);
-    });
-})
-.catch((err) => {
-    // Agar DB connection fail ho jaata hai to error message print karenge
-    // Aur process ko crash hone se bachane ke liye console mein log karenge
-    console.log("MongoDB connection failed !!!!", err);
-    process.exit(1); // Process ko exit kar dete hain failure status ke saath
-});
+WHAT:
+- dotenv package `.env` file ko read karta hai
+- Uske andar likhe variables ko `process.env` me load karta hai
 
+WHY:
+- Sensitive cheezein (DB URL, PORT, JWT secrets) code me likhna unsafe hota hai
+- Same code ko multiple environments (local, staging, production) me use kar sakte hain
+- Security + flexibility dono milti hai
 
-/* 
+WHEN:
+- Application start hote hi sabse pehle
+- Kisi bhi file me `process.env` use hone se pehle
 
-// Alternative approach jo tumne comment mein diya tha:
-
-import express from "express";
-const app = express();
-
-(async () => {
-    try {
-        // MongoDB connect kar rahe hain, environment variable se URI aur DB_NAME use karte hue
-        await mongoose.connect(`${process.env.MONGODB_URL}/${DB_NAME}`);
-
-        // Agar server me koi error aata hai, toh usko catch karne ke liye event listener
-        app.on("error", (error) => {
-            console.log("App error:", error);
-            throw error;
-        });
-
-        // Server ko listen karwana port pe
-        app.listen(process.env.PORT, () => {
-            console.log(`App is listening on port ${process.env.PORT}`);
-        });
-    } catch (error) {
-        // Agar try block mein koi error aaye to catch mein aayega
-        console.log("ERROR:", error);
-        throw error;  // throw karne se process crash ho sakta hai, isliye use carefully
-    }
-})();
-
+INTERVIEW:
+- Environment variables help us manage configuration securely without hardcoding values.
+=====================================================
 */
+dotenv.config({
+  path: "./.env",
+});
 
-// Is tarah se tum DB connect hone ke baad hi server start kar rahe ho,
-// jo ki best practice hai production applications ke liye.
+/*
+=====================================================
+DATABASE CONNECTION & SERVER BOOTSTRAP FLOW
+=====================================================
 
+WHAT:
+- `connectDB()` MongoDB se connection establish karta hai
+- Ye function Promise return karta hai
+
+WHY:
+- Database ke bina backend ka core kaam possible nahi hota
+- Agar DB down ho aur server chal gaya → runtime crashes honge
+- Isliye pehle DB, phir server (safe & professional approach)
+
+WHEN:
+- Backend application ke entry point pe
+- First execution logic of server
+
+HOW:
+- `.then()` tab chalta hai jab DB successfully connect ho jaye
+- `.catch()` tab chalta hai jab DB connection fail ho jaata hai
+=====================================================
+*/
+connectDB()
+  .then(() => {
+
+    /*
+    =====================================================
+    EXPRESS SERVER START
+    =====================================================
+
+    WHAT:
+    - Express app ko ek specific PORT pe listen karwa rahe hain
+    - Client requests isi port pe aayengi
+
+    WHY:
+    - PORT environment variable cloud deployment me required hota hai
+    - Fallback (8000) local development ke liye helpful hota hai
+    - Flexible & scalable setup banta hai
+
+    WHEN:
+    - Sirf DB successful hone ke baad
+    - Production-grade applications me recommended flow
+
+    INTERVIEW:
+    - Server starts only after DB connection to ensure application stability.
+    =====================================================
+    */
+    app.listen(process.env.PORT || 8000, () => {
+      console.log(
+        `Server is running at port: ${process.env.PORT || 8000}`
+      );
+    });
+  })
+  .catch((err) => {
+
+    /*
+    =====================================================
+    DATABASE CONNECTION ERROR HANDLING
+    =====================================================
+
+    WHAT:
+    - MongoDB connection fail hone par ye block execute hota hai
+    - Error details console me print hoti hain
+
+    WHY:
+    - Clear error logging debugging ke liye important hoti hai
+    - `process.exit(1)` se app ko intentionally stop kar dete hain
+    - Broken state me server chalne se bachata hai
+
+    WHEN:
+    - Wrong DB URI
+    - MongoDB server down
+    - Network issue
+    - Invalid credentials
+
+    INTERVIEW:
+    - Proper error handling prevents unstable application states.
+    =====================================================
+    */
+    console.log("MongoDB connection failed !!!!", err);
+    process.exit(1);
+  });
+
+/*
+=====================================================
+OVERALL APPLICATION FLOW (EASY TO REMEMBER)
+=====================================================
+
+1️⃣ Load environment variables
+2️⃣ Connect to MongoDB
+3️⃣ Start Express server
+4️⃣ If DB fails → crash app safely
+
+WHY THIS DESIGN:
+- Clean architecture
+- Easy debugging
+- Production-ready
+- Interview friendly
+
+ONE-LINER:
+"My backend follows a DB-first startup approach to ensure reliability."
+=====================================================
+*/

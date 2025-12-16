@@ -1,27 +1,113 @@
 import mongoose from "mongoose";
-import { DB_NAME } from "../constents.js";  // Database ka naam import kar rahe hain, jise alag file me define kiya hai
+import { DB_NAME } from "../constents.js";
 
-/**
- * connectDB ek asynchronous function hai jo MongoDB database se connection establish karta hai.
- * Ye mongoose ki connect method ka use karta hai jisme hum MongoDB URI aur database name dete hain.
- */
+/*
+=====================================================
+DATABASE CONNECTION OVERVIEW
+-----------------------------------------------------
+WHAT:
+- MongoDB database se application ka connection establish karta hai
+- Mongoose ka use karke DB connection handle karta hai
+- Centralized database connection logic provide karta hai
+
+WHY:
+- Application ko database ke saath interact karne ke liye
+- DB connection logic ko ek hi jagah maintain karne ke liye
+- Error handling aur stability ensure karne ke liye
+
+WHEN:
+- Server start hote hi call kiya jaata hai
+- App ke first boot time pe execute hota hai
+- Kisi bhi DB operation se pehle required hota hai
+=====================================================
+*/
+
+/*
+=====================================================
+connectDB FUNCTION
+-----------------------------------------------------
+WHAT:
+- MongoDB URI aur database name ke saath mongoose.connect() call karta hai
+- Successful connection par DB host ka naam print karta hai
+
+WHY:
+- DB connection success ya failure clearly pata chal sake
+- Debugging aur monitoring easy ho jaati hai
+
+WHEN:
+- index.js / server.js se server start ke time call hota hai
+=====================================================
+*/
 const connectDB = async () => {
-    try {
-        // Mongoose ka connect method call kar rahe hain, jisme connection string me
-        // environment variable MONGODB_URI aur DB_NAME dono use ho rahe hain.
-        // Ye promise return karta hai jiska await karte hain.
-        const connectionInstance = await mongoose.connect(`${process.env.MONGODB_URI}/${DB_NAME}`);
+  try {
+    /*
+      WHAT:
+      - MongoDB se asynchronous connection establish karta hai
 
-        // Agar connection successful ho jata hai to connected host ka naam console pe print karenge
-        console.log(`\n mongo db connected !! DB HOST ${connectionInstance.connection.host}`);
-    } catch (error) {
-        // Agar connection establish karne me koi error aata hai to usko catch karenge
-        console.log("Mongo db connection error", error);
+      WHY:
+      - await use karne se ensure hota hai ki DB connect ho chuki ho
+        uske baad hi server aage chale
 
-        // Aur process ko exit kar denge (1 means error ke sath) taaki app bina DB ke na chale
-        process.exit(1);
-    }
-}
+      WHEN:
+      - App startup ke time run hota hai
+    */
+    const connectionInstance = await mongoose.connect(
+      `${process.env.MONGODB_URI}/${DB_NAME}`
+    );
 
-// Ye connectDB function ko default export kar rahe hain taaki dusri files me import kar ke use kar saken
+    /*
+      WHAT:
+      - Successful DB connection ka confirmation log karta hai
+
+      WHY:
+      - Developer ko pata chale ki DB kis host se connected hai
+
+      WHEN:
+      - Connection successful hone ke turant baad
+    */
+    console.log(
+      `\n MongoDB connected !! DB HOST : ${connectionInstance.connection.host}`
+    );
+  } catch (error) {
+    /*
+      WHAT:
+      - DB connection error handle karta hai
+
+      WHY:
+      - Agar DB connect nahi hui to app ko aage chalana unsafe hai
+
+      WHEN:
+      - Connection failure ya wrong credentials ke case me
+    */
+    console.log("MongoDB connection error :", error);
+
+    /*
+      WHAT:
+      - Node process ko terminate kar deta hai
+
+      WHY:
+      - DB ke bina backend application ka koi fayda nahi
+      - Infinite error state se bachne ke liye
+
+      WHEN:
+      - Fatal DB connection failure ke time
+    */
+    process.exit(1);
+  }
+};
+
+/*
+=====================================================
+EXPORT
+-----------------------------------------------------
+WHAT:
+- connectDB function ko export karta hai
+
+WHY:
+- Server start file (index.js) me reuse ke liye
+
+WHEN:
+- Application bootstrap ke time import karke call kiya jaata hai
+=====================================================
+*/
 export default connectDB;
