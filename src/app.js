@@ -144,11 +144,28 @@ WHEN:
 
 //router import
 
-import userRouter from './routes/user.routes.js'
+import userRouter from './routes/user.routes.js';
 
+/*
+=====================================================
+ROUTES DECLARATION / MOUNTING
+-----------------------------------------------------
+WHAT:
+- User related routes ko main Express app me mount karta hai
+- "/api/v1/users" base path ke saath userRouter use hota hai
+- Saare user API endpoints iss path ke andar aate hain
 
-//routes decaration
+WHY:
+- API endpoints ko versioning ke sath organize karta hai (v1)
+- Code modular banta hai aur routes clean rehte hain
+- Future me easily naya route ya version add kar sakte hain
 
-app.use("/api/v1/users",userRouter)
+WHEN:
+- Server setup ke time, jab app ko route handlers attach karte hain
+- Jab client /api/v1/users ke endpoints pe request bhejta hai
+=====================================================
+*/
+app.use("/api/v1/users", userRouter);
+
 export { app };
  
