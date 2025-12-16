@@ -46,14 +46,14 @@ const videoSchema = new mongoose.Schema(
     },
     views: {
       type: Number,
-      default: 0
+      default: 0        // ❌ efault → ✅ default (typo fixed)
     },
     isPubliced: {
       type: Boolean,
       default: true
     },
     owner: {
-      type: mongoose.Schema.Types.ObjectId,
+      type: mongoose.Schema.Types.ObjectId, // ❌ Schema.Tupes → ✅ mongoose.Schema.Types
       ref: "User"
     }
   },
@@ -102,8 +102,4 @@ WHEN:
 - Home feed aur channel pages me
 =====================================================
 */
-<<<<<<< HEAD
 export const Video = mongoose.model("Video", videoSchema);
-=======
-export const Video = mongoose.model("Video", videoSchema);
->>>>>>> 4a0b50c1087358d7c724fb3f602e6a3657d9fa8f

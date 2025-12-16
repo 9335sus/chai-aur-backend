@@ -141,5 +141,14 @@ WHEN:
 - Server bootstrap ke time import hota hai
 =====================================================
 */
+
+//router import
+
+import userRouter from './routes/user.routes.js'
+
+
+//routes decaration
+
+app.use("/api/v1/users",userRouter)
 export { app };
  
