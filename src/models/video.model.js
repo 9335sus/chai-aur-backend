@@ -102,4 +102,8 @@ WHEN:
 - Home feed aur channel pages me
 =====================================================
 */
+<<<<<<< HEAD
 export const Video = mongoose.model("Video", videoSchema);
+=======
+export const Video = mongoose.model("Video", videoSchema);
+>>>>>>> 4a0b50c1087358d7c724fb3f602e6a3657d9fa8f

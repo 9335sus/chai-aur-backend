@@ -94,7 +94,11 @@ userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) return next();
   this.password = await bcrypt.hash(this.password, 10);
   next();
+<<<<<<< HEAD
 }); 
+=======
+});
+>>>>>>> 4a0b50c1087358d7c724fb3f602e6a3657d9fa8f
 
 /*
 =====================================================
@@ -205,4 +209,8 @@ WHEN:
 - Jab bhi user data access karna ho
 =====================================================
 */
+<<<<<<< HEAD
 export const User = mongoose.model("User", userSchema);
+=======
+export const User = mongoose.model("User", userSchema);
+>>>>>>> 4a0b50c1087358d7c724fb3f602e6a3657d9fa8f
