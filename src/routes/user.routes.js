@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { resisterUser } from "../controllers/user.controller.js";
-
+import {upload} from "../middlewares/multer.middleware.js";
 /*
 =====================================================
 USER ROUTES SETUP
@@ -23,6 +23,16 @@ WHEN:
 const router = Router();
 
 // POST request pe /resister route ko handle karte hain
-router.route("/resister").post(resisterUser);
+router.route("/resister").post(
+    upload.fields([
+        {name:"avatar",
+            maxCount:1
+        },
+        {
+            name:"coverImage",
+            maxCount:1
+        }
+    ]),
+    resisterUser);
 
 export default router;

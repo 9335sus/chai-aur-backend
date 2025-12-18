@@ -117,4 +117,4 @@ WHEN:
 - res.json(new ApiResponse(...)) use karte time
 =====================================================
 */
-export default ApiResponse;
+export { ApiResponse};

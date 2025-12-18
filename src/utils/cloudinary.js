@@ -24,9 +24,9 @@ INTERVIEW:
 =====================================================
 */
 cloudinary.config({
-  cloud_name: process.env.CLOUDINAR_CLOUD_NAME,
-  api_key: process.env.CLOUDINAR_API_KEY,
-  api_secret: process.env.CLOUDINAR_API_SECRET,
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
 /*
@@ -144,7 +144,7 @@ WHEN:
 - Production me normally remove kar dete hain
 =====================================================
 */
-cloudinary.v2.upload(
+cloudinary.uploader.upload(
   "https://imgv3.fotor.com/images/videoImage/wonderland-girl-generated-by-Fotor-ai-art-generator.jpg",
   {
     public_id: "olympic_flag",
@@ -169,4 +169,4 @@ WHEN:
 - File upload ke baad Cloudinary call karte time
 =====================================================
 */
-export default uplodeOnCloudinary;
+export { uplodeOnCloudinary };
