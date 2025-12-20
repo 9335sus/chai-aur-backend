@@ -268,7 +268,7 @@ const resisterUser = asyncHandler(async (req, res) => {
 // - Jab frontend /login API hit karta hai
 // - Jab existing user app me enter kare
 
-const loginUser = asyncHandler(async (req, res) => {
+ const loginUser = asyncHandler(async (req, res) => {
 
   // WHAT: Request body se data nikal rahe hain
   // WHY: Login ke liye credentials chahiye

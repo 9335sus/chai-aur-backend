@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
-import ApiError from "../utils/ApiError.js";
+import {ApiError} from "../utils/ApiError.js";
 import jwt from "jsonwebtoken";
-import User from "../models/user.model.js";
+import {User} from "../models/user.model.js";
 
 // ============================
 // VERIFY JWT MIDDLEWARE
@@ -21,7 +21,7 @@ import User from "../models/user.model.js";
 // - Jab middleware chain me authentication required ho
 // - Jab frontend Bearer token ya cookies ke sath request bheje
 
-export const varifyJWT = asyncHandler(async (req, res, next) => {
+ const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
     // WHAT: Access token cookies ya Authorization header se nikal rahe hain
     // WHY: Token dono jagah se aa sakta hai (cookie / Bearer)
@@ -81,4 +81,4 @@ export const varifyJWT = asyncHandler(async (req, res, next) => {
   }
 });
 
-export { varifyJWT };
+export { verifyJWT };

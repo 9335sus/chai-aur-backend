@@ -1,7 +1,9 @@
 import { Router } from "express";
 import { resisterUser } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js";
-import verifyJWT from "../middlewares/verifyJWT.middleware.js";
+import {verifyJWT} from "../middlewares/verifyJWT.middleware.js";
+import { loginUser } from "../controllers/user.controller.js";
+import { logoutUser } from "../controllers/user.controller.js";
 /*
 =====================================================
 USER ROUTES SETUP

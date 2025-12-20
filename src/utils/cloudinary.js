@@ -1,5 +1,9 @@
+import dotenv from "dotenv";
 import { v2 as cloudinary } from "cloudinary";
 import fs from "fs";
+ 
+dotenv.config("./.env");
+
 
 /*
 =====================================================
@@ -23,6 +27,8 @@ INTERVIEW:
 - Cloudinary is used to offload media storage from the backend server.
 =====================================================
 */
+ 
+
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
