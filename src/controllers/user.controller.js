@@ -4,6 +4,21 @@ import { User } from "../models/user.model.js";
 import { uplodeOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const genrateAccessAndRefreshToken = async (userId) => {
+  try {
+     const user=await User.findById(userId);
+     const accessToken=user.generateAccessToken();
+     const refreshToken=user.generateRefreshToken();
+    
+     user.refreshToken=refreshToken;
+     await user.save({validateBeforeSave:false});
+
+      return {accessToken,refreshToken};
+    }catch (error) {
+    throw new ApiError("Token generation failed", 500);
+}
+};
+
 /*
 =====================================================
 REGISTER USER CONTROLLER
@@ -42,7 +57,11 @@ const resisterUser = asyncHandler(async (req, res) => {
   -----------------------------------------------------
   */
   const { fullName, email, userName, password } = req.body;
-  console.log("email:", email);
+   console.log("fullname:->", fullName);
+  console.log("email:->", email);
+   console.log("username:->", userName);
+  console.log("password:->", password);
+  
 
   /*
   -----------------------------------------------------
@@ -90,6 +109,7 @@ const resisterUser = asyncHandler(async (req, res) => {
       409
     );
   }
+  console.log(req.files);
 
   /*
   -----------------------------------------------------
@@ -228,4 +248,162 @@ const resisterUser = asyncHandler(async (req, res) => {
   );
 });
 
-export { resisterUser };
+// ============================
+// LOGIN USER CONTROLLER
+// ============================
+
+// WHAT:
+// - User ko login karne ka kaam karta hai
+// - Username/email aur password verify karta hai
+// - Access & Refresh token generate karta hai
+// - Tokens ko secure cookies me set karta hai
+//
+// WHY:
+// - Authentication ke bina protected routes access nahi hone chahiye
+// - Password direct compare karna unsafe hota hai
+// - Token-based login scalable aur secure hota hai
+//
+// WHEN:
+// - Jab user login form submit karta hai
+// - Jab frontend /login API hit karta hai
+// - Jab existing user app me enter kare
+
+const loginUser = asyncHandler(async (req, res) => {
+
+  // WHAT: Request body se data nikal rahe hain
+  // WHY: Login ke liye credentials chahiye
+  // WHEN: Jab client login request bhejta hai
+  const { email, username, password } = req.body;
+
+  // WHAT: Username ya Email mandatory check
+  // WHY: Dono missing hue to user identify nahi ho paayega
+  // WHEN: Request validation ke time
+  if (!username && !email) {
+    throw new ApiError(400, "Username or Email is required");
+  }
+
+  // WHAT: Database me user search kar rahe hain
+  // WHY: Verify karna hai ki user exist karta hai ya nahi
+  // WHEN: Login attempt ke time
+  const user = await User.findOne({
+    $or: [{ username }, { email }]
+  });
+
+  // WHAT: User exist nahi karta to error
+  // WHY: Invalid login attempt ko block karna
+  // WHEN: DB query ke baad
+  if (!user) {
+    throw new ApiError(404, "User not found");
+  }
+
+  // WHAT: Password verify kar rahe hain
+  // WHY: Security ke liye hashed password compare hota hai
+  // WHEN: User milne ke baad
+  const isPasswordCorrect = await user.isPasswordCorrect(password);
+
+  // WHAT: Password galat hai to access deny
+  // WHY: Unauthorized user ko login se rokna
+  // WHEN: Password mismatch hone par
+  if (!isPasswordCorrect) {
+    throw new ApiError(401, "Invalid credentials");
+  }
+
+  // WHAT: Access & Refresh token generate kar rahe hain
+  // WHY: Session management aur authentication ke liye
+  // WHEN: Login successfully verify hone ke baad
+  const { accessToken, refreshToken } =
+    await genrateAccessAndRefreshToken(user._id);
+
+  // WHAT: User ka safe data nikal rahe hain
+  // WHY: Password aur refreshToken client ko nahi dena
+  // WHEN: Response bhejne se pehle
+  const loggedInUser = await User.findById(user._id)
+    .select("-password -refreshToken");
+
+  // WHAT: Cookie options define kar rahe hain
+  // WHY: httpOnly & secure cookies attacks se protect karti hain
+  // WHEN: Token cookies set karte waqt
+  const options = {
+    httpOnly: true,
+    secure: true
+  };
+
+  // WHAT: Cookies set karke response bhej rahe hain
+  // WHY: Client ko authenticated session dena
+  // WHEN: Login successful hone par
+  return res
+    .status(200)
+    .cookie("accessToken", accessToken, options)
+    .cookie("refreshToken", refreshToken, options)
+    .json(
+      new ApiResponse(
+        200,
+        {
+          user: loggedInUser,
+          accessToken,
+          refreshToken
+        },
+        "User logged in successfully"
+      )
+    );
+});
+
+
+// ============================
+// LOGOUT USER CONTROLLER
+// ============================
+
+// WHAT:
+// - User ko logout karta hai
+// - Refresh token database se remove karta hai
+// - Cookies clear karta hai
+//
+// WHY:
+// - Security ke liye tokens invalidate karna zaruri hai
+// - Logout ke baad session active nahi rehna chahiye
+//
+// WHEN:
+// - Jab user logout button click karta hai
+// - Jab frontend /logout API call karta hai
+
+const logoutUser = asyncHandler(async (req, res) => {
+
+  // WHAT: User ke refreshToken ko DB se remove kar rahe hain
+  // WHY: Future token misuse se bachav ke liye
+  // WHEN: Logout request aane par
+  await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { refreshToken: undefined }
+    },
+    {
+      new: true,
+      runValidators: true
+    }
+  );
+
+  // WHAT: Cookie options define
+  // WHY: Same options use karna clearCookie ke liye zaruri hota hai
+  // WHEN: Cookies remove karte waqt
+  const options = {
+    httpOnly: true,
+    secure: true
+  };
+
+  // WHAT: Cookies clear karke response bhej rahe hain
+  // WHY: Client-side session completely end karna
+  // WHEN: Logout successful hone par
+  return res
+    .status(200)
+    .clearCookie("accessToken", options)
+    .clearCookie("refreshToken", options)
+    .json(
+      new ApiResponse(
+        200,
+        null,
+        "User logged out successfully"
+      )
+    );
+});
+
+export { resisterUser, loginUser, logoutUser };
