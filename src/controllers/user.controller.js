@@ -4,7 +4,37 @@ import { User } from "../models/user.model.js";
 import { uplodeOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
-
+//jwt kya hota hai
+//access token kya hota hai
+//refresh token kya hota hai
+//access token or refresh token me kya fark hai
+//access token or refresh token kab generate hote hai
+//access token or refresh token ko kaha store karte hai
+//access token or refresh token ko client or server me kaise bhejte hai
+//access token or refresh token ko secure kaise karte hai
+//access token or refresh token ko kab expire karte hai
+//token based authentication kya hota hai
+//stateless authentication kya hota hai
+//token rotation kya hota hai
+//secure cookies kya hoti hai
+//httpOnly cookies kya hoti hai
+//secure storage kya hota hai
+//===============================
+// TOKEN GENERATION FUNCTION
+//===============================
+// WHAT:
+// - Access aur Refresh token generate karta hai
+// - User ID ko token me embed karta hai
+// - Refresh token ko database me securely store karta hai
+//  WHY:
+// - Stateless authentication implement karne ke liye
+//  - User sessions ko manage karne ke liye
+// - Token compromise hone par risk kam karne ke liye
+//  WHEN:
+// - Login ke baad token generate hota hai
+// - Refresh token se access token renew karte waqt
+// - Har protected request ke saath access token bheja jaata hai
+//==============================
 const genrateAccessAndRefreshToken = async (userId) => {
   try {
      const user=await User.findById(userId);
@@ -767,7 +797,295 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   );
 });
 
+const getUserChannelProfile = asyncHandler(async (req, res) => {
 
+  // ===============================
+  // INPUT VALIDATION
+  // ===============================
+
+  /*
+  WHAT:
+  1️⃣ URL params se username extract kar rahe hain
+  2️⃣ Username ko lowercase me normalize kar rahe hain
+  3️⃣ Empty ya undefined username check kar rahe hain
+  4️⃣ Invalid request ko early reject kar rahe hain
+
+  WHY:
+  1️⃣ DB me unnecessary query avoid karne ke liye
+  2️⃣ Case-sensitive mismatch se bachne ke liye
+  3️⃣ Clean & predictable input ensure karne ke liye
+  4️⃣ API ko misuse hone se bachane ke liye
+
+  WHEN:
+  1️⃣ Jab channel profile URL hit hota hai
+  2️⃣ Jab frontend kisi user ka channel open kare
+  3️⃣ Jab username missing ho
+  4️⃣ Jab invalid username bheja jaye
+  */
+  const { username } = req.params;
+
+  if (!username?.trim()) {
+    throw new ApiError(400, "Username is required");
+  }
+
+
+  // ===============================
+  // AGGREGATION PIPELINE
+  // ===============================
+      // pipeline ke har stage ke neeche comments me explain kiya hai
+      // har stage ka WHAT, WHY, WHEN
+      // isse code samajhna asaan ho jayega
+    //aggregation kya hota hai: MongoDB me multiple operations ko ek saath chain karne ka tareeka
+    // jisse complex data processing aur transformation possible hoti hai
+    // hum yahan aggregation use kar rahe hain taaki ek hi query me multiple related data fetch kar sakein
+    //example ke liye: user ka basic info, uske subscribers, aur subscription status
+    //aur example ke liye: YouTube channel profile page pe dikhane ke liye
+    // isse performance bhi improve hoti hai kyunki multiple round-trips DB ke liye nahi karni padti
+
+
+    //pipeline kya hota hai: ek sequence of stages jisme har stage me data ko process kiya jata hai
+    // har stage me data ko filter, transform, ya aggregate kiya ja sakta hai
+    // hum yahan 5 stages use kar rahe hain:
+    // 1️⃣ Match stage: specific user ko filter karta hai
+    // 2️⃣ Lookup stage: subscriptions se join karta hai
+    // 3️⃣ Add Fields stage: calculated fields add karta hai
+    // 4️⃣ Project stage: required fields select karta hai
+    // 5️⃣ Final output stage: processed data return karta hain 
+    
+      
+  /*
+  WHAT:
+  1️⃣ User collection se channel ka data fetch karta hai
+  2️⃣ Subscription collection ke saath join karta hai
+  3️⃣ Subscribers & subscribed channels count nikalta hai
+  4️⃣ Logged-in user ka subscription status batata hai
+
+  WHY:
+  1️⃣ Channel profile page ke liye complete data chahiye
+  2️⃣ Multiple queries ko ek hi DB call me handle karne ke liye
+  3️⃣ Performance improve karne ke liye
+  4️⃣ Real-world YouTube / Instagram logic implement karne ke liye
+
+  WHEN:
+  1️⃣ Jab koi user kisi channel ka profile open kare
+  2️⃣ Jab channel stats (followers/following) dikhane ho
+  3️⃣ Jab "Subscribed / Not Subscribed" button dikhana ho
+  4️⃣ Jab public channel data fetch karna ho
+  */
+  const channel = await User.aggregate([
+    // ===============================
+    // STAGE 1: MATCH USER
+    // ===============================
+    //MATCH stage me hum specific user ko uske username ke basis pe filter kar rahe hain
+    // WHAT:
+    // 1️⃣ Specified username ke saath user document dhundhna
+    // 2️⃣ Case-insensitive matching ke liye lowercase use karna
+    // 3️⃣ Exact match ensure karna
+    // 4️⃣ Next stages ke liye base document prepare karna
+
+    // WHY:
+    // 1️⃣ Sirf relevant user data process karne ke liye
+    // 2️⃣ Case sensitivity issues avoid karne ke liye
+    // 3️⃣ Accurate profile data dikhane ke liye
+    // 4️⃣ Aggregation pipeline ko efficient banane ke liye
+
+    // WHEN:
+    // 1️⃣ Jab channel profile request aaye
+    // 2️⃣ Jab username URL se mile
+    // 3️⃣ Jab aggregation start ho
+    // 4️⃣ Jab specific user ko target karna ho
+    {
+      $match: {
+        username: username.toLowerCase(),
+      },
+    },
+
+    // ===============================
+    // STAGE 2: LOOKUP SUBSCRIBERS
+    // ===============================
+    //LOOKUP stage me hum subscriptions collection se join kar rahe hain taaki pata chale ki is user ke kitne subscribers hain
+    // WHAT:
+    // 1️⃣ Subscriptions collection se data join karna
+    // 2️⃣ Local user _id ko foreign channel field se match karna
+    // 3️⃣ Subscribers ka array create karna
+    // 4️⃣ Next stages ke liye subscriber data prepare karna
+
+    // WHY:
+    // 1️⃣ Channel ke followers count nikalne ke liye
+    // 2️⃣ Subscription status check karne ke liye
+    // 3️⃣ Complete channel profile dikhane ke liye
+    // 4️⃣ Aggregation me relational data include karne ke liye
+
+    // WHEN:
+    // 1️⃣ Jab channel profile load ho
+    // 2️⃣ Jab subscriber info chahiye ho
+    // 3️⃣ Jab channel stats calculate karne ho
+    // 4️⃣ Jab relational data fetch karna ho
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "channel",
+        as: "subscribers",
+      },
+    },
+
+    // ===============================
+    // STAGE 3: LOOKUP SUBSCRIBED CHANNELS
+    // ===============================
+    {
+      $lookup: {
+        from: "subscriptions",
+        localField: "_id",
+        foreignField: "subscriber",
+        as: "subscribedTo",
+      },
+    },
+
+    // ===============================
+    // STAGE 4: ADD COMPUTED FIELDS
+    // ===============================
+    //ADD FIELDS stage me hum calculated fields add kar rahe hain jaise subscribers count, subscribed channels count, aur logged-in user ka subscription status
+    // WHAT:
+    // 1️⃣ Calculated fields add karna
+    // 2️⃣ Subscribers count nikalna
+    // 3️⃣ Subscribed channels count nikalna
+    // 4️⃣ Logged-in user ka subscription status check karna
+
+    // WHY:
+    // 1️⃣ Channel profile me important stats dikhane ke liye
+    // 2️⃣ User experience improve karne ke liye
+    // 3️⃣ Real-time subscription status dikhane ke liye
+    // 4️⃣ Aggregation me dynamic data include karne ke liye
+
+    // WHEN:
+    // 1️⃣ Jab channel profile render ho
+    // 2️⃣ Jab stats display karne ho
+    // 3️⃣ Jab subscription button ka state set karna ho
+    // 4️⃣ Jab calculated data chahiye ho
+    {
+      $addFields: {
+        // Total subscribers count
+        subscribersCount: {
+          $size: "$subscribers",
+        },
+
+        // Total channels user subscribed to
+        channelsSubscribedToCount: {
+          $size: "$subscribedTo",
+        },
+
+        // Logged-in user subscribed or not
+        isSubscribed: {
+          $cond: {
+            if: {
+              $in: [
+                req.user?._id,
+                "$subscribers.subscriber",
+              ],
+            },
+            then: true,
+            else: false,
+          },
+        },
+      },
+    },
+
+    // ===============================
+    // STAGE 5: PROJECT REQUIRED FIELDS
+    // ===============================
+    //PROJECT stage me hum sirf required fields hi select kar rahe hain taaki response lightweight ho
+    // WHAT:
+    // 1️⃣ Sirf necessary fields select karna
+    // 2️⃣ Sensitive fields exclude karna
+    // 3️⃣ Response size optimize karna
+    // 4️⃣ Frontend ke liye clean data structure provide karna
+
+    // WHY:
+    // 1️⃣ Bandwidth aur performance improve karne ke liye
+    // 2️⃣ Sensitive info accidentally expose na ho
+    // 3️⃣ Frontend parsing easy ho
+    // 4️⃣ API response consistent banane ke liye
+
+    // WHEN:
+    // 1️⃣ Jab final response prepare ho raha ho
+    // 2️⃣ Jab data frontend ko bhejna ho
+    // 3️⃣ Jab lightweight response chahiye ho
+    // 4️⃣ Jab unnecessary data avoid karna ho
+    {
+      $project: {
+        fullname: 1,
+        username: 1,
+        email: 1,
+        avatar: 1,
+        coverImage: 1,
+        subscribersCount: 1,
+        channelsSubscribedToCount: 1,
+        isSubscribed: 1,
+      },
+    },
+  ]);
+
+
+  // ===============================
+  // CHANNEL EXISTENCE CHECK
+  // ===============================
+
+  /*
+  WHAT:
+  1️⃣ Aggregation result empty hai ya nahi check karte hain
+  2️⃣ Invalid username ke case me error throw karte hain
+  3️⃣ Frontend ko clear error message dete hain
+  4️⃣ Crash se bachate hain
+
+  WHY:
+  1️⃣ Non-existing channel ka profile avoid karne ke liye
+  2️⃣ Proper HTTP status code return karne ke liye
+  3️⃣ Frontend UX improve karne ke liye
+  4️⃣ Debugging easy banane ke liye
+
+  WHEN:
+  1️⃣ Jab username DB me exist na kare
+  2️⃣ Jab user delete ho chuka ho
+  3️⃣ Jab typo ke saath request aaye
+  4️⃣ Jab malicious request ho
+  */
+  if (!channel?.length) {
+    throw new ApiError(404, "Channel not found");
+  }
+
+
+  // ===============================
+  // SUCCESS RESPONSE
+  // ===============================
+
+  /*
+  WHAT:
+  1️⃣ Aggregated channel data frontend ko bhejte hain
+  2️⃣ Sirf first document return karte hain
+  3️⃣ Standard ApiResponse format follow karte hain
+  4️⃣ Success message ke saath response dete hain
+
+  WHY:
+  1️⃣ Aggregation hamesha array return karta hai
+  2️⃣ Frontend ko clean object chahiye hota hai
+  3️⃣ Consistent API response maintain karne ke liye
+  4️⃣ Debug & maintenance easy hota hai
+
+  WHEN:
+  1️⃣ Channel successfully mil jaye
+  2️⃣ Aggregation complete ho jaye
+  3️⃣ No error occur kare
+  4️⃣ Profile page render karna ho
+  */
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      channel[0],
+      "User channel profile fetched successfully"
+    )
+  );
+});
 // ===============================
 // EXPORTS
 // ===============================
@@ -781,4 +1099,6 @@ export {
   updateAccountDetails,
   updateUserAvatar,
   updateUserCoverImage,
+  getUserChannelProfile,
+
 };
