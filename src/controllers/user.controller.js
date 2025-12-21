@@ -3,6 +3,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { User } from "../models/user.model.js";
 import { uplodeOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
+import jwt from "jsonwebtoken";
 
 const genrateAccessAndRefreshToken = async (userId) => {
   try {
@@ -406,4 +407,68 @@ const logoutUser = asyncHandler(async (req, res) => {
     );
 });
 
-export { resisterUser, loginUser, logoutUser };
+// ===============================
+// REFRESH ACCESS TOKEN CONTROLLER
+// ===============================
+const refreshAccessToken = asyncHandler(async (req, res) => {
+
+  // 1️⃣ Refresh token nikaal rahe hain (cookie ya body se)
+  const incommingRefreshToken =
+    req.cookies?.refreshToken || req.body?.refreshToken;
+
+  if (!incommingRefreshToken) {
+    throw new ApiError(401, "Refresh token missing");
+  }
+
+  try {
+    // 2️⃣ Refresh token verify
+    const decodedToken = jwt.verify(
+      incommingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+
+    // 3️⃣ User find
+    const user = await User.findById(decodedToken._id);
+
+    if (!user || user.refreshToken !== incommingRefreshToken) {
+      throw new ApiError(401, "Invalid refresh token");
+    }
+
+    // 4️⃣ New tokens generate
+    const { accessToken, refreshToken } =
+      await genrateAccessAndRefreshToken(user._id);
+
+    // 5️⃣ Cookie options
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+
+    // 6️⃣ Response send (✅ return is NOW VALID)
+    return res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshToken", refreshToken, options)
+      .json(
+        new ApiResponse(
+          200,
+          { accessToken, refreshToken },
+          "Access token refreshed successfully"
+        )
+      );
+
+  } catch (error) {
+    throw new ApiError(401, "Invalid refresh token");
+  }
+});
+
+
+// ===============================
+// EXPORTS
+// ===============================
+export {
+  resisterUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken
+};

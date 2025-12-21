@@ -4,6 +4,7 @@ import {upload} from "../middlewares/multer.middleware.js";
 import {verifyJWT} from "../middlewares/verifyJWT.middleware.js";
 import { loginUser } from "../controllers/user.controller.js";
 import { logoutUser } from "../controllers/user.controller.js";
+import { refreshAccessToken } from "../controllers/user.controller.js";
 /*
 =====================================================
 USER ROUTES SETUP
@@ -75,6 +76,6 @@ router.route("/login").post(loginUser);
 
 router.route("/logout").post(verifyJWT, logoutUser);
 
-
+router.route("/refresh-token").post(refreshAccessToken); // to be implemented
 
 export default router;
