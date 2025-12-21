@@ -407,12 +407,39 @@ const logoutUser = asyncHandler(async (req, res) => {
     );
 });
 
-// ===============================
+/// ===============================
 // REFRESH ACCESS TOKEN CONTROLLER
 // ===============================
+
+/*
+WHAT:
+1️⃣ Expired access token ke case me naya access token generate karta hai
+2️⃣ Refresh token ko validate karta hai
+3️⃣ User ke session ko continue rakhta hai
+4️⃣ Secure token rotation implement karta hai
+
+WHY:
+1️⃣ User ko baar-baar login karne se bachane ke liye
+2️⃣ Access token short-lived hone ki wajah se
+3️⃣ Security improve karne ke liye (token rotation)
+4️⃣ Better UX maintain karne ke liye
+
+WHEN:
+1️⃣ Jab access token expire ho jata hai
+2️⃣ Protected API 401 error return kare
+3️⃣ Frontend silently token refresh kare
+4️⃣ Long-running sessions ke case me
+*/
 const refreshAccessToken = asyncHandler(async (req, res) => {
 
-  // 1️⃣ Refresh token nikaal rahe hain (cookie ya body se)
+  // 1️⃣ Refresh token cookie ya request body se nikaal rahe hain
+  /*
+  WHY:
+  1️⃣ Cookie zyada secure hoti hai (httpOnly)
+  2️⃣ XSS attack se protection milta hai
+  3️⃣ Body fallback support ke liye
+  4️⃣ Mobile / API clients ke liye useful
+  */
   const incommingRefreshToken =
     req.cookies?.refreshToken || req.body?.refreshToken;
 
@@ -422,29 +449,65 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
   try {
     // 2️⃣ Refresh token verify
+    /*
+    WHY:
+    1️⃣ Token ka signature verify karna
+    2️⃣ Token expire hua ya nahi check karna
+    3️⃣ Fake / tampered token reject karna
+    4️⃣ jwt.decode se zyada secure method
+    */
     const decodedToken = jwt.verify(
       incommingRefreshToken,
       process.env.REFRESH_TOKEN_SECRET
     );
 
-    // 3️⃣ User find
+    // 3️⃣ User DB se fetch
+    /*
+    WHY:
+    1️⃣ Token ke andar wali user ID valid hai ya nahi
+    2️⃣ Deleted / blocked user ko reject karna
+    3️⃣ DB-stored refresh token match karna
+    4️⃣ Session integrity maintain karna
+    */
     const user = await User.findById(decodedToken._id);
 
+    // 4️⃣ Refresh token DB match check
+    /*
+    WHY:
+    1️⃣ Token theft detect karne ke liye
+    2️⃣ Old token reuse prevent karne ke liye
+    3️⃣ Logout ke baad token invalidate ho
+    4️⃣ Strong security layer add karne ke liye
+    */
     if (!user || user.refreshToken !== incommingRefreshToken) {
       throw new ApiError(401, "Invalid refresh token");
     }
 
-    // 4️⃣ New tokens generate
+    // 5️⃣ New access & refresh token generate
+    /*
+    WHY:
+    1️⃣ Access token short-lived hota hai
+    2️⃣ Refresh token rotation implement hoti hai
+    3️⃣ Compromised token ka reuse prevent hota hai
+    4️⃣ Secure authentication flow maintain hota hai
+    */
     const { accessToken, refreshToken } =
       await genrateAccessAndRefreshToken(user._id);
 
-    // 5️⃣ Cookie options
+    // 6️⃣ Cookie options
+    /*
+    WHY:
+    1️⃣ httpOnly → JS access block
+    2️⃣ secure → HTTPS only
+    3️⃣ Token leakage prevent
+    4️⃣ Production-grade security
+    */
     const options = {
       httpOnly: true,
       secure: true,
     };
 
-    // 6️⃣ Response send (✅ return is NOW VALID)
+    // 7️⃣ Response send
     return res
       .status(200)
       .cookie("accessToken", accessToken, options)
@@ -458,8 +521,250 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
       );
 
   } catch (error) {
+    // 8️⃣ Invalid / expired refresh token
     throw new ApiError(401, "Invalid refresh token");
   }
+});
+
+
+// ===============================
+// CHANGE PASSWORD CONTROLLER
+// ===============================
+
+/*
+WHAT:
+1️⃣ Logged-in user ka password change karta hai
+2️⃣ Old password verify karta hai
+3️⃣ New password securely save karta hai
+4️⃣ Account security improve karta hai
+
+WHY:
+1️⃣ Account compromise hone par password change
+2️⃣ User ko security control dene ke liye
+3️⃣ Best security practice follow karne ke liye
+4️⃣ Unauthorized access prevent karne ke liye
+
+WHEN:
+1️⃣ User password change request kare
+2️⃣ Password leak ka doubt ho
+3️⃣ Regular security update ke liye
+4️⃣ Profile management ke time
+*/
+const changePassword = asyncHandler(async (req, res) => {
+
+  const { oldPassword, newPassword } = req.body;
+
+  // User verifyJWT middleware se aata hai
+  const user = await User.findById(req.user?._id);
+
+  // Old password check
+  /*
+  WHY:
+  1️⃣ Confirm karna ki request genuine hai
+  2️⃣ Random password change prevent karna
+  3️⃣ Account hijacking se protection
+  4️⃣ Secure password update flow
+  */
+  const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+
+  if (!isPasswordCorrect) {
+    throw new ApiError(400, "Invalid old password");
+  }
+
+  // New password set
+  user.password = newPassword;
+
+  /*
+  WHY validateBeforeSave false:
+  1️⃣ Sirf password update ho raha hai
+  2️⃣ Baaki fields unchanged hain
+  3️⃣ Performance better hoti hai
+  4️⃣ Unnecessary validation avoid hoti hai
+  */
+  await user.save({ validateBeforeSave: false });
+
+  res.status(200).json(
+    new ApiResponse(200, null, "Password changed successfully")
+  );
+});
+
+
+// ===============================
+// GET CURRENT USER PROFILE
+// ===============================
+
+/*
+WHAT:
+1️⃣ Logged-in user ka profile data return karta hai
+2️⃣ req.user se data fetch karta hai
+3️⃣ Secure user info provide karta hai
+4️⃣ Dashboard / profile ke liye data deta hai
+
+WHY:
+1️⃣ User ko apna data dikhane ke liye
+2️⃣ Profile page render karne ke liye
+3️⃣ Repeated DB calls avoid karne ke liye
+4️⃣ verifyJWT middleware ka use justify karta hai
+
+WHEN:
+1️⃣ User dashboard load ho
+2️⃣ Profile page open ho
+3️⃣ Account settings page open ho
+4️⃣ Authenticated user data chahiye ho
+*/
+const getCurrentUserProfile = asyncHandler(async (req, res) => {
+  res.status(200).json(
+    new ApiResponse(200, req.user, "User profile fetched successfully")
+  );
+});
+
+
+// ===============================
+// UPDATE ACCOUNT DETAILS
+// ===============================
+
+/*
+WHAT:
+1️⃣ User ka fullname update karta hai
+2️⃣ User ka email update karta hai
+3️⃣ Profile information modify karta hai
+4️⃣ Updated data return karta hai
+
+WHY:
+1️⃣ User profile editing ke liye
+2️⃣ Incorrect details fix karne ke liye
+3️⃣ Personal information update ke liye
+4️⃣ Better account management ke liye
+
+WHEN:
+1️⃣ User profile edit kare
+2️⃣ Email change ho
+3️⃣ Name correction ho
+4️⃣ Account settings update ho
+*/
+const updateAccountDetails = asyncHandler(async (req, res) => {
+
+  const { fullname, email } = req.body;
+
+  if (!fullname || !email) {
+    throw new ApiError(400, "Fullname and email are required");
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { fullname, email }
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res.status(200).json(
+    new ApiResponse(200, updatedUser, "User profile updated successfully")
+  );
+});
+
+
+// ===============================
+// UPDATE USER AVATAR
+// ===============================
+
+/*
+WHAT:
+1️⃣ User ka avatar image update karta hai
+2️⃣ Local file ko cloud pe upload karta hai
+3️⃣ Avatar URL DB me save karta hai
+4️⃣ Updated user return karta hai
+
+WHY:
+1️⃣ Profile personalization ke liye
+2️⃣ Better user identity ke liye
+3️⃣ Cloud storage use karne ke liye
+4️⃣ Local server load kam karne ke liye
+
+WHEN:
+1️⃣ User avatar upload kare
+2️⃣ Profile image change kare
+3️⃣ Account setup ke time
+4️⃣ Re-branding ke case me
+*/
+const updateUserAvatar = asyncHandler(async (req, res) => {
+
+  const avatarLocalPath = req.file?.path;
+
+  if (!avatarLocalPath) {
+    throw new ApiError(400, "Avatar image is required");
+  }
+
+  const avatarCloudinaryResponse =
+    await uplodeOnCloudinary(avatarLocalPath);
+
+  if (!avatarCloudinaryResponse?.url) {
+    throw new ApiError(500, "Image upload failed");
+  }
+
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { avatar: avatarCloudinaryResponse.url }
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res.status(200).json(
+    new ApiResponse(200, updatedUser, "User avatar updated successfully")
+  );
+});
+
+
+// ===============================
+// UPDATE USER COVER IMAGE
+// ===============================
+
+/*
+WHAT:
+1️⃣ User ka cover image update karta hai
+2️⃣ Cloudinary pe image upload karta hai
+3️⃣ DB me image URL save karta hai
+4️⃣ Updated profile return karta hai
+
+WHY:
+1️⃣ Profile customization ke liye
+2️⃣ Better UI / UX ke liye
+3️⃣ Cloud storage ka benefit lene ke liye
+4️⃣ Media handling ko scalable banane ke liye
+
+WHEN:
+1️⃣ User cover image change kare
+2️⃣ Profile redesign kare
+3️⃣ Account customization kare
+4️⃣ Branding update ke case me
+*/
+const updateUserCoverImage = asyncHandler(async (req, res) => {
+
+  const coverImageLocalPath = req.file?.path;
+
+  if (!coverImageLocalPath) {
+    throw new ApiError(400, "Cover image is required");
+  }
+
+  const coverImage =
+    await uplodeOnCloudinary(coverImageLocalPath);
+
+  if (!coverImage?.url) {
+    throw new ApiError(500, "Image upload failed");
+  }
+
+  const user = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: { coverImage: coverImage.url }
+    },
+    { new: true }
+  ).select("-password -refreshToken");
+
+  res.status(200).json(
+    new ApiResponse(200, user, "User cover image updated successfully")
+  );
 });
 
 
@@ -470,5 +775,10 @@ export {
   resisterUser,
   loginUser,
   logoutUser,
-  refreshAccessToken
+  refreshAccessToken,
+  changePassword,
+  getCurrentUserProfile,
+  updateAccountDetails,
+  updateUserAvatar,
+  updateUserCoverImage,
 };
