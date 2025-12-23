@@ -1085,52 +1085,80 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   );
 });
 
+/*
+=====================================================
+GET WATCH HISTORY CONTROLLER
+-----------------------------------------------------
+WHAT:
+1. Ye controller logged-in user ki watch history fetch karta hai
+2. MongoDB aggregation pipeline ka use karke data retrieve karta hai
+3. User ke watchHistory array se related videos nikalta hai
+4. Har video ke saath owner (uploader) ki basic details laata hai
+5. Final response me watch history videos client ko return karta hai
+
+WHY:
+1. User ko apni previously watched videos dikhane ke liye
+2. Complex relational data ko efficiently fetch karne ke liye aggregation use hota hai
+3. Multiple collections (users, videos) ko join karna zaruri hota hai
+4. Performance improve karne ke liye sirf required fields project ki jaati hain
+5. Frontend ko clean aur structured data provide karne ke liye
+
+WHEN:
+1. Jab user "Watch History" section open karta hai
+2. Jab frontend `/watch-history` API call karta hai
+3. Jab user logged-in hota hai (JWT verified)
+4. Jab dashboard ya profile page load hota hai
+5. Jab user apni activity history dekhna chahta hai
+=====================================================
+*/
+
 const getWatchHistory = asyncHandler(async (req, res) => {    
-  // Implementation pending
-  const suer=await User.aggregate([
+  const suer = await User.aggregate([
     {
-      $match:{_id:new mongoose.Types.ObjectId("req.User._id")}
+      $match: {
+        _id: new mongoose.Types.ObjectId(req.user._id)
+      }
     },
     {
-      $lookup:{
-        from:"videos",
-        localField:"watchHistory",
-        foreignField:"_id",
-        as:"watchHistoryVideos",
-        pipeline:[
+      $lookup: {
+        from: "videos",
+        localField: "watchHistory",
+        foreignField: "_id",
+        as: "watchHistoryVideos",
+        pipeline: [
           {
-            $lookup:{
-              from:"users",
-              localField:"owner",
-              foreignField:"_id",
-              as:"owner",
-              pipeline:[
+            $lookup: {
+              from: "users",
+              localField: "owner",
+              foreignField: "_id",
+              as: "owner",
+              pipeline: [
                 {
-                  $project:{
-                    fullname:1,
-                    username:1,
-                    avatar:1,
+                  $project: {
+                    fullname: 1,
+                    username: 1,
+                    avatar: 1,
                   }
                 }
               ]
             }
           },
           {
-            $unwind:"$uploaderDetails"
+            $unwind: "$owner"
           }
         ]
       }
     }
   ]);
-return res.status(200).json(
-  new ApiResponse(
-    200,
-    suer[0].watchHistoryVideos,
-    "User watch history fetched successfully"
-  ) 
-);
-});
 
+  return res.status(200).json(
+    new ApiResponse(
+      200,
+      suer[0].watchHistoryVideos,
+      "User watch history fetched successfully"
+    )
+  );
+});
 
 // ===============================
 // EXPORTS
