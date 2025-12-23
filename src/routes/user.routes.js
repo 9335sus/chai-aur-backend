@@ -1,10 +1,14 @@
 import { Router } from "express";
-import { resisterUser } from "../controllers/user.controller.js";
+import { resisterUser, updateAccountDetails } from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js";
 import {verifyJWT} from "../middlewares/verifyJWT.middleware.js";
 import { loginUser } from "../controllers/user.controller.js";
 import { logoutUser } from "../controllers/user.controller.js";
 import { refreshAccessToken } from "../controllers/user.controller.js";
+import { changePassword}  from "../controllers/user.controller.js";
+import { getCurrentUserProfile } from "../controllers/user.controller.js";
+import {getUserChannelProfile} from "../controllers/user.controller.js";    
+import {getWatchHistory} from "../controllers/user.controller.js";
 /*
 =====================================================
 USER ROUTES SETUP
@@ -77,5 +81,12 @@ router.route("/login").post(loginUser);
 router.route("/logout").post(verifyJWT, logoutUser);
 
 router.route("/refresh-token").post(refreshAccessToken); // to be implemented
+ router.route("/change-password").post(verifyJWT, changePassword);
+ router.route("/current-user").get(verifyJWT, getCurrentUserProfile);
+ router.route("/update-profile").patch(verifyJWT,updateAccountDetails);
+ router.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateAccountDetails);
+ router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateAccountDetails);
+ router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
+    router.route("/watch-history").get(verifyJWT, getWatchHistory); 
 
 export default router;

@@ -832,9 +832,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   // ===============================
   // AGGREGATION PIPELINE
   // ===============================
-      // pipeline ke har stage ke neeche comments me explain kiya hai
-      // har stage ka WHAT, WHY, WHEN
-      // isse code samajhna asaan ho jayega
+     
     //aggregation kya hota hai: MongoDB me multiple operations ko ek saath chain karne ka tareeka
     // jisse complex data processing aur transformation possible hoti hai
     // hum yahan aggregation use kar rahe hain taaki ek hi query me multiple related data fetch kar sakein
@@ -1086,6 +1084,54 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     )
   );
 });
+
+const getWatchHistory = asyncHandler(async (req, res) => {    
+  // Implementation pending
+  const suer=await User.aggregate([
+    {
+      $match:{_id:new mongoose.Types.ObjectId("req.User._id")}
+    },
+    {
+      $lookup:{
+        from:"videos",
+        localField:"watchHistory",
+        foreignField:"_id",
+        as:"watchHistoryVideos",
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              localField:"owner",
+              foreignField:"_id",
+              as:"owner",
+              pipeline:[
+                {
+                  $project:{
+                    fullname:1,
+                    username:1,
+                    avatar:1,
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $unwind:"$uploaderDetails"
+          }
+        ]
+      }
+    }
+  ]);
+return res.status(200).json(
+  new ApiResponse(
+    200,
+    suer[0].watchHistoryVideos,
+    "User watch history fetched successfully"
+  ) 
+);
+});
+
+
 // ===============================
 // EXPORTS
 // ===============================
@@ -1100,5 +1146,5 @@ export {
   updateUserAvatar,
   updateUserCoverImage,
   getUserChannelProfile,
-
+  getWatchHistory,
 };
