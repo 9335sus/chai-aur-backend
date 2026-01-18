@@ -34,6 +34,7 @@ cloudinary.config({
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
+ 
 
 /*
 =====================================================
@@ -88,7 +89,7 @@ const uplodeOnCloudinary = async (localFilePath) => {
     ---------------------------------------------
     */
     const responce = await cloudinary.uploader.upload(localFilePath, {
-      resource_type: "auto",
+       resource_type: "auto",
     });
 
     /*
@@ -111,10 +112,14 @@ const uplodeOnCloudinary = async (localFilePath) => {
     - Controller ko URL, public_id, etc. chahiye hota hai
     ---------------------------------------------
     */
+   if (fs.existsSync(localFilePath)) {
+      fs.unlinkSync(localFilePath);
+    }
     return responce;
 
   } catch (error) {
 
+    console.log("Cloudinary error:", error.message);
     /*
     ---------------------------------------------
     WHAT:
@@ -128,7 +133,9 @@ const uplodeOnCloudinary = async (localFilePath) => {
     - Upload fail ho jaaye
     ---------------------------------------------
     */
-    fs.unlinkSync(localFilePath);
+   if (fs.existsSync(localFilePath)) {
+  fs.unlinkSync(localFilePath);
+}
     return null;
   }
 };
@@ -150,16 +157,7 @@ WHEN:
 - Production me normally remove kar dete hain
 =====================================================
 */
-cloudinary.uploader.upload(
-  "https://imgv3.fotor.com/images/videoImage/wonderland-girl-generated-by-Fotor-ai-art-generator.jpg",
-  {
-    public_id: "olympic_flag",
-  },
-  function (error, result) {
-    console.log(result);
-  }
-);
-
+ 
 /*
 =====================================================
 EXPORT

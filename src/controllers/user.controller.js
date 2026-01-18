@@ -4,6 +4,7 @@ import { User } from "../models/user.model.js";
 import { uplodeOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken";
+import mongoose from "mongoose";
 //jwt kya hota hai
 //access token kya hota hai
 //refresh token kya hota hai
@@ -37,17 +38,17 @@ import jwt from "jsonwebtoken";
 //==============================
 const genrateAccessAndRefreshToken = async (userId) => {
   try {
-     const user=await User.findById(userId);
-     const accessToken=user.generateAccessToken();
-     const refreshToken=user.generateRefreshToken();
-    
-     user.refreshToken=refreshToken;
-     await user.save({validateBeforeSave:false});
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
 
-      return {accessToken,refreshToken};
-    }catch (error) {
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+  } catch (error) {
     throw new ApiError("Token generation failed", 500);
-}
+  }
 };
 
 /*
@@ -87,12 +88,12 @@ const resisterUser = asyncHandler(async (req, res) => {
   - Har registration request ke start me ye data receive hota hai
   -----------------------------------------------------
   */
-  const { fullName, email, userName, password } = req.body;
-   console.log("fullname:->", fullName);
+  const { username, email, fullname, password } = req.body;
+  console.log("username:->", username);
   console.log("email:->", email);
-   console.log("username:->", userName);
+
+  console.log("fullname:->", fullname);
   console.log("password:->", password);
-  
 
   /*
   -----------------------------------------------------
@@ -109,7 +110,7 @@ const resisterUser = asyncHandler(async (req, res) => {
   -----------------------------------------------------
   */
   if (
-    [fullName, email, userName, password].some(
+    [fullname, email, username, password].some(
       (field) => !field || field.trim() === ""
     )
   ) {
@@ -131,16 +132,13 @@ const resisterUser = asyncHandler(async (req, res) => {
   -----------------------------------------------------
   */
   const existUser = await User.findOne({
-    $or: [{ email }, { username: userName }],
+    $or: [{ email }, { username: username }],
   });
 
   if (existUser) {
-    throw new ApiError(
-      "User already exist with this email or username",
-      409
-    );
+    throw new ApiError("User already exist with this email or username", 409);
   }
-  console.log(req.files);
+  
 
   /*
   -----------------------------------------------------
@@ -158,7 +156,10 @@ const resisterUser = asyncHandler(async (req, res) => {
   */
   const avatarLocalPath = req.files?.avatar?.[0]?.path;
   const coverImageLocalPath = req.files?.coverImage?.[0]?.path;
-
+  console.log("files:->", req.files);
+  console.log("avatar:", avatarLocalPath);
+  console.log("cover:", coverImageLocalPath);
+  console.log("Cloudinary config:", process.env.CLOUDINARY_CLOUD_NAME);
   if (!avatarLocalPath || !coverImageLocalPath) {
     throw new ApiError("Avatar and Cover image are required", 400);
   }
@@ -177,12 +178,23 @@ const resisterUser = asyncHandler(async (req, res) => {
   - Jab multer se files mil jaye, upload karna hota hai
   -----------------------------------------------------
   */
-  const avatarCloudinaryResponce = await uplodeOnCloudinary(
-    avatarLocalPath
-  );
-  const coverImageCloudinaryResponce = await uplodeOnCloudinary(
-    coverImageLocalPath
-  );
+  const avatarCloudinaryResponce = await uplodeOnCloudinary(avatarLocalPath);
+  if (!avatarCloudinaryResponce?.url) {
+  throw new ApiError(500, "Avatar upload failed");
+}
+
+let coverImageUrl = "";
+
+if (coverImageLocalPath) {
+  const coverImageResponse = await uplodeOnCloudinary(coverImageLocalPath);
+
+  if (!coverImageResponse) {
+    throw new Error("Cover image upload failed");
+  }
+
+  coverImageUrl = coverImageResponse.url;
+}
+
 
   /*
   -----------------------------------------------------
@@ -197,10 +209,7 @@ const resisterUser = asyncHandler(async (req, res) => {
   - Cloudinary se response fail aaye to
   -----------------------------------------------------
   */
-  if (!avatarCloudinaryResponce || !coverImageCloudinaryResponce) {
-    throw new ApiError("Image upload failed,try again", 500);
-  }
-
+   
   /*
   -----------------------------------------------------
   WHAT:
@@ -217,12 +226,12 @@ const resisterUser = asyncHandler(async (req, res) => {
   -----------------------------------------------------
   */
   const user = await User.create({
-    fullName,
+    fullname,
     avatar: avatarCloudinaryResponce.url,
-    coverImage: coverImageCloudinaryResponce?.url || "",
+    coverImage: coverImageUrl,
     email,
     password,
-    username: userName.toLowerCase(),
+    username: username.toLowerCase(),
   });
 
   /*
@@ -274,9 +283,9 @@ const resisterUser = asyncHandler(async (req, res) => {
   - Sab kuch successful hone ke baad response bhejte waqt
   -----------------------------------------------------
   */
-  res.status(201).json(
-    new ApiResponse(201, createdUser, "User registered successfully")
-  );
+  res
+    .status(201)
+    .json(new ApiResponse(201, createdUser, "User registered successfully"));
 });
 
 // ============================
@@ -299,12 +308,11 @@ const resisterUser = asyncHandler(async (req, res) => {
 // - Jab frontend /login API hit karta hai
 // - Jab existing user app me enter kare
 
- const loginUser = asyncHandler(async (req, res) => {
-
+const loginUser = asyncHandler(async (req, res) => {
   // WHAT: Request body se data nikal rahe hain
   // WHY: Login ke liye credentials chahiye
   // WHEN: Jab client login request bhejta hai
-  const { email, username, password } = req.body;
+  const { username,email, password } = req.body;
 
   // WHAT: Username ya Email mandatory check
   // WHY: Dono missing hue to user identify nahi ho paayega
@@ -317,7 +325,7 @@ const resisterUser = asyncHandler(async (req, res) => {
   // WHY: Verify karna hai ki user exist karta hai ya nahi
   // WHEN: Login attempt ke time
   const user = await User.findOne({
-    $or: [{ username }, { email }]
+    $or: [{ username }, { email }],
   });
 
   // WHAT: User exist nahi karta to error
@@ -342,21 +350,23 @@ const resisterUser = asyncHandler(async (req, res) => {
   // WHAT: Access & Refresh token generate kar rahe hain
   // WHY: Session management aur authentication ke liye
   // WHEN: Login successfully verify hone ke baad
-  const { accessToken, refreshToken } =
-    await genrateAccessAndRefreshToken(user._id);
+  const { accessToken, refreshToken } = await genrateAccessAndRefreshToken(
+    user._id
+  );
 
   // WHAT: User ka safe data nikal rahe hain
   // WHY: Password aur refreshToken client ko nahi dena
   // WHEN: Response bhejne se pehle
-  const loggedInUser = await User.findById(user._id)
-    .select("-password -refreshToken");
+  const loggedInUser = await User.findById(user._id).select(
+    "-password -refreshToken"
+  );
 
   // WHAT: Cookie options define kar rahe hain
   // WHY: httpOnly & secure cookies attacks se protect karti hain
   // WHEN: Token cookies set karte waqt
   const options = {
     httpOnly: true,
-    secure: true
+    secure: true,
   };
 
   // WHAT: Cookies set karke response bhej rahe hain
@@ -372,13 +382,12 @@ const resisterUser = asyncHandler(async (req, res) => {
         {
           user: loggedInUser,
           accessToken,
-          refreshToken
+          refreshToken,
         },
         "User logged in successfully"
       )
     );
 });
-
 
 // ============================
 // LOGOUT USER CONTROLLER
@@ -398,27 +407,26 @@ const resisterUser = asyncHandler(async (req, res) => {
 // - Jab frontend /logout API call karta hai
 
 const logoutUser = asyncHandler(async (req, res) => {
-
   // WHAT: User ke refreshToken ko DB se remove kar rahe hain
   // WHY: Future token misuse se bachav ke liye
   // WHEN: Logout request aane par
   await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { refreshToken: undefined }
+      $set: { refreshToken: undefined },
     },
     {
       new: true,
-      runValidators: true
+      runValidators: true,
     }
-  );
+  ); 
 
   // WHAT: Cookie options define
   // WHY: Same options use karna clearCookie ke liye zaruri hota hai
   // WHEN: Cookies remove karte waqt
   const options = {
     httpOnly: true,
-    secure: true
+    secure: true,
   };
 
   // WHAT: Cookies clear karke response bhej rahe hain
@@ -428,13 +436,7 @@ const logoutUser = asyncHandler(async (req, res) => {
     .status(200)
     .clearCookie("accessToken", options)
     .clearCookie("refreshToken", options)
-    .json(
-      new ApiResponse(
-        200,
-        null,
-        "User logged out successfully"
-      )
-    );
+    .json(new ApiResponse(200, null, "User logged out successfully"));
 });
 
 /// ===============================
@@ -461,7 +463,6 @@ WHEN:
 4️⃣ Long-running sessions ke case me
 */
 const refreshAccessToken = asyncHandler(async (req, res) => {
-
   // 1️⃣ Refresh token cookie ya request body se nikaal rahe hain
   /*
   WHY:
@@ -472,7 +473,8 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
   */
   const incommingRefreshToken =
     req.cookies?.refreshToken || req.body?.refreshToken;
-
+console.log("Cookies:", req.cookies);
+console.log("Body:", req.body);
   if (!incommingRefreshToken) {
     throw new ApiError(401, "Refresh token missing");
   }
@@ -500,6 +502,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     4️⃣ Session integrity maintain karna
     */
     const user = await User.findById(decodedToken._id);
+ 
 
     // 4️⃣ Refresh token DB match check
     /*
@@ -521,8 +524,9 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     3️⃣ Compromised token ka reuse prevent hota hai
     4️⃣ Secure authentication flow maintain hota hai
     */
-    const { accessToken, refreshToken } =
-      await genrateAccessAndRefreshToken(user._id);
+    const { accessToken, refreshToken } = await genrateAccessAndRefreshToken(
+      user._id
+    );
 
     // 6️⃣ Cookie options
     /*
@@ -534,7 +538,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     */
     const options = {
       httpOnly: true,
-      secure: true,
+      secure: false,
     };
 
     // 7️⃣ Response send
@@ -549,13 +553,11 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
           "Access token refreshed successfully"
         )
       );
-
   } catch (error) {
     // 8️⃣ Invalid / expired refresh token
     throw new ApiError(401, "Invalid refresh token");
   }
 });
-
 
 // ===============================
 // CHANGE PASSWORD CONTROLLER
@@ -581,12 +583,14 @@ WHEN:
 4️⃣ Profile management ke time
 */
 const changePassword = asyncHandler(async (req, res) => {
-
   const { oldPassword, newPassword } = req.body;
 
   // User verifyJWT middleware se aata hai
-  const user = await User.findById(req.user?._id);
+ const user = await User.findById(req.user?._id)
 
+console.log("Password from DB:", user.password);
+  console.log("Old Password:", oldPassword);
+   console.log("New Password:", newPassword);
   // Old password check
   /*
   WHY:
@@ -596,12 +600,14 @@ const changePassword = asyncHandler(async (req, res) => {
   4️⃣ Secure password update flow
   */
   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
+  
 
   if (!isPasswordCorrect) {
     throw new ApiError(400, "Invalid old password");
   }
 
   // New password set
+  
   user.password = newPassword;
 
   /*
@@ -613,11 +619,10 @@ const changePassword = asyncHandler(async (req, res) => {
   */
   await user.save({ validateBeforeSave: false });
 
-  res.status(200).json(
-    new ApiResponse(200, null, "Password changed successfully")
-  );
+  res
+    .status(200)
+    .json(new ApiResponse(200, null, "Password changed successfully"));
 });
-
 
 // ===============================
 // GET CURRENT USER PROFILE
@@ -643,11 +648,13 @@ WHEN:
 4️⃣ Authenticated user data chahiye ho
 */
 const getCurrentUserProfile = asyncHandler(async (req, res) => {
-  res.status(200).json(
-    new ApiResponse(200, req.user, "User profile fetched successfully")
-  );
-});
+  console.log("Cookies:", req.cookies);
+console.log("Auth Header:", req.headers.authorization);
 
+  res
+    .status(200)
+    .json(new ApiResponse(200, req.user, "User profile fetched successfully"));
+});
 
 // ===============================
 // UPDATE ACCOUNT DETAILS
@@ -662,7 +669,7 @@ WHAT:
 
 WHY:
 1️⃣ User profile editing ke liye
-2️⃣ Incorrect details fix karne ke liye
+2️⃣ Incor rect details fix karne ke liye
 3️⃣ Personal information update ke liye
 4️⃣ Better account management ke liye
 
@@ -673,7 +680,6 @@ WHEN:
 4️⃣ Account settings update ho
 */
 const updateAccountDetails = asyncHandler(async (req, res) => {
-
   const { fullname, email } = req.body;
 
   if (!fullname || !email) {
@@ -683,16 +689,17 @@ const updateAccountDetails = asyncHandler(async (req, res) => {
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { fullname, email }
+      $set: { fullname, email },
     },
     { new: true }
   ).select("-password -refreshToken");
 
-  res.status(200).json(
-    new ApiResponse(200, updatedUser, "User profile updated successfully")
-  );
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser, "User profile updated successfully")
+    );
 });
-
 
 // ===============================
 // UPDATE USER AVATAR
@@ -718,15 +725,13 @@ WHEN:
 4️⃣ Re-branding ke case me
 */
 const updateUserAvatar = asyncHandler(async (req, res) => {
-
   const avatarLocalPath = req.file?.path;
 
   if (!avatarLocalPath) {
     throw new ApiError(400, "Avatar image is required");
   }
 
-  const avatarCloudinaryResponse =
-    await uplodeOnCloudinary(avatarLocalPath);
+  const avatarCloudinaryResponse = await uplodeOnCloudinary(avatarLocalPath);
 
   if (!avatarCloudinaryResponse?.url) {
     throw new ApiError(500, "Image upload failed");
@@ -735,16 +740,17 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
   const updatedUser = await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { avatar: avatarCloudinaryResponse.url }
+      $set: { avatar: avatarCloudinaryResponse.url },
     },
     { new: true }
   ).select("-password -refreshToken");
 
-  res.status(200).json(
-    new ApiResponse(200, updatedUser, "User avatar updated successfully")
-  );
+  res
+    .status(200)
+    .json(
+      new ApiResponse(200, updatedUser, "User avatar updated successfully")
+    );
 });
-
 
 // ===============================
 // UPDATE USER COVER IMAGE
@@ -770,15 +776,13 @@ WHEN:
 4️⃣ Branding update ke case me
 */
 const updateUserCoverImage = asyncHandler(async (req, res) => {
-
   const coverImageLocalPath = req.file?.path;
 
   if (!coverImageLocalPath) {
     throw new ApiError(400, "Cover image is required");
   }
 
-  const coverImage =
-    await uplodeOnCloudinary(coverImageLocalPath);
+  const coverImage = await uplodeOnCloudinary(coverImageLocalPath);
 
   if (!coverImage?.url) {
     throw new ApiError(500, "Image upload failed");
@@ -787,18 +791,17 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
   const user = await User.findByIdAndUpdate(
     req.user._id,
     {
-      $set: { coverImage: coverImage.url }
+      $set: { coverImage: coverImage.url },
     },
     { new: true }
   ).select("-password -refreshToken");
 
-  res.status(200).json(
-    new ApiResponse(200, user, "User cover image updated successfully")
-  );
+  res
+    .status(200)
+    .json(new ApiResponse(200, user, "User cover image updated successfully"));
 });
 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
-
   // ===============================
   // INPUT VALIDATION
   // ===============================
@@ -828,29 +831,26 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     throw new ApiError(400, "Username is required");
   }
 
-
   // ===============================
   // AGGREGATION PIPELINE
   // ===============================
-     
-    //aggregation kya hota hai: MongoDB me multiple operations ko ek saath chain karne ka tareeka
-    // jisse complex data processing aur transformation possible hoti hai
-    // hum yahan aggregation use kar rahe hain taaki ek hi query me multiple related data fetch kar sakein
-    //example ke liye: user ka basic info, uske subscribers, aur subscription status
-    //aur example ke liye: YouTube channel profile page pe dikhane ke liye
-    // isse performance bhi improve hoti hai kyunki multiple round-trips DB ke liye nahi karni padti
 
+  //aggregation kya hota hai: MongoDB me multiple operations ko ek saath chain karne ka tareeka
+  // jisse complex data processing aur transformation possible hoti hai
+  // hum yahan aggregation use kar rahe hain taaki ek hi query me multiple related data fetch kar sakein
+  //example ke liye: user ka basic info, uske subscribers, aur subscription status
+  //aur example ke liye: YouTube channel profile page pe dikhane ke liye
+  // isse performance bhi improve hoti hai kyunki multiple round-trips DB ke liye nahi karni padti
 
-    //pipeline kya hota hai: ek sequence of stages jisme har stage me data ko process kiya jata hai
-    // har stage me data ko filter, transform, ya aggregate kiya ja sakta hai
-    // hum yahan 5 stages use kar rahe hain:
-    // 1️⃣ Match stage: specific user ko filter karta hai
-    // 2️⃣ Lookup stage: subscriptions se join karta hai
-    // 3️⃣ Add Fields stage: calculated fields add karta hai
-    // 4️⃣ Project stage: required fields select karta hai
-    // 5️⃣ Final output stage: processed data return karta hain 
-    
-      
+  //pipeline kya hota hai: ek sequence of stages jisme har stage me data ko process kiya jata hai
+  // har stage me data ko filter, transform, ya aggregate kiya ja sakta hai
+  // hum yahan 5 stages use kar rahe hain:
+  // 1️⃣ Match stage: specific user ko filter karta hai
+  // 2️⃣ Lookup stage: subscriptions se join karta hai
+  // 3️⃣ Add Fields stage: calculated fields add karta hai
+  // 4️⃣ Project stage: required fields select karta hai
+  // 5️⃣ Final output stage: processed data return karta hain
+
   /*
   WHAT:
   1️⃣ User collection se channel ka data fetch karta hai
@@ -977,10 +977,7 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
         isSubscribed: {
           $cond: {
             if: {
-              $in: [
-                req.user?._id,
-                "$subscribers.subscriber",
-              ],
+              $in: [req.user?._id, "$subscribers.subscriber"],
             },
             then: true,
             else: false,
@@ -1024,7 +1021,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     },
   ]);
 
-
   // ===============================
   // CHANNEL EXISTENCE CHECK
   // ===============================
@@ -1052,7 +1048,6 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
     throw new ApiError(404, "Channel not found");
   }
 
-
   // ===============================
   // SUCCESS RESPONSE
   // ===============================
@@ -1076,13 +1071,15 @@ const getUserChannelProfile = asyncHandler(async (req, res) => {
   3️⃣ No error occur kare
   4️⃣ Profile page render karna ho
   */
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      channel[0],
-      "User channel profile fetched successfully"
-    )
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        channel[0],
+        "User channel profile fetched successfully"
+      )
+    );
 });
 
 /*
@@ -1112,12 +1109,12 @@ WHEN:
 =====================================================
 */
 
-const getWatchHistory = asyncHandler(async (req, res) => {    
-  const suer = await User.aggregate([
+const getWatchHistory = asyncHandler(async (req, res) => {
+  const user = await User.aggregate([
     {
       $match: {
-        _id: new mongoose.Types.ObjectId(req.user._id)
-      }
+        _id: new mongoose.Types.ObjectId(req.user._id),
+      },
     },
     {
       $lookup: {
@@ -1138,26 +1135,28 @@ const getWatchHistory = asyncHandler(async (req, res) => {
                     fullname: 1,
                     username: 1,
                     avatar: 1,
-                  }
-                }
-              ]
-            }
+                  },
+                },
+              ],
+            },
           },
           {
-            $unwind: "$owner"
-          }
-        ]
-      }
-    }
+            $unwind: "$owner",
+          },
+        ],
+      },
+    },
   ]);
 
-  return res.status(200).json(
-    new ApiResponse(
-      200,
-      suer[0].watchHistoryVideos,
-      "User watch history fetched successfully"
-    )
-  );
+  return res
+    .status(200)
+    .json(
+      new ApiResponse(
+        200,
+        user[0].watchHistoryVideos,
+        "User watch history fetched successfully"
+      )
+    );
 });
 
 // ===============================

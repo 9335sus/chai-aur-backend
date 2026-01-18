@@ -31,7 +31,7 @@ WHEN:
 const router = Router();
 
 // POST request pe /resister route ko handle karte hain
-router.route("/resister").post(
+router.route("/register").post(
     upload.fields([
         {name:"avatar",
             maxCount:1
@@ -81,12 +81,12 @@ router.route("/login").post(loginUser);
 router.route("/logout").post(verifyJWT, logoutUser);
 
 router.route("/refresh-token").post(refreshAccessToken); // to be implemented
- router.route("/change-password").post(verifyJWT, changePassword);
+ router.route("/change-password").patch(verifyJWT, changePassword);
  router.route("/current-user").get(verifyJWT, getCurrentUserProfile);
  router.route("/update-profile").patch(verifyJWT,updateAccountDetails);
  router.route("/avatar").patch(verifyJWT,upload.single("avatar"),updateAccountDetails);
  router.route("/cover-image").patch(verifyJWT,upload.single("coverImage"),updateAccountDetails);
  router.route("/channel/:username").get(verifyJWT, getUserChannelProfile);
-    router.route("/watch-history").get(verifyJWT, getWatchHistory); 
+  router.route("/watch-history").get(verifyJWT, getWatchHistory); 
 
 export default router;

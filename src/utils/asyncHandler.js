@@ -28,6 +28,10 @@
  * - Express-compatible middleware function
  */
 const asyncHandler = (fn) => {
+    return (req,res,next)=>{
+        Promise.resolve(fn(req,res,next)).catch((err)=>next(err))
+    }
+}
 
     /*
     -------------------------------------------------
@@ -36,9 +40,7 @@ const asyncHandler = (fn) => {
     - Express automatically ise req, res, next deta hai
     -------------------------------------------------
     */
-    return async (req, res, next) => {
-        try {
-
+   
             /*
             ---------------------------------------------
             WHAT:
@@ -51,10 +53,7 @@ const asyncHandler = (fn) => {
             - Jab API endpoint hit hota hai
             ---------------------------------------------
             */
-            await fn(req, res, next);
-
-        } catch (err) {
-
+           
             /*
             ---------------------------------------------
             WHAT:
@@ -68,10 +67,6 @@ const asyncHandler = (fn) => {
             - DB error, validation error, auth error, etc.
             ---------------------------------------------
             */
-            next(err);
-        }
-    };
-};
 
 /*
 =====================================================

@@ -55,7 +55,8 @@ app.use(
 JSON BODY PARSER
 -----------------------------------------------------
 WHAT:
-- Incoming JSON request body ko parse karta hai
+- Incoming JSON request body ko parse (kisi data ko read karke uska structure 
+ samajhna aur usable form me convert karna)karta hai
 - Data ko req.body me available karata hai
 
 WHY:
@@ -165,6 +166,8 @@ WHEN:
 - Jab client /api/v1/users ke endpoints pe request bhejta hai
 =====================================================
 */
+
+ 
 app.use("/api/v1/users", userRouter);
 
 export { app };

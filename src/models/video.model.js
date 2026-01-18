@@ -24,19 +24,19 @@ WHEN:
 
 const videoSchema = new mongoose.Schema(
   {
-    videoFile: {
+    videoFile: {  //cloudinary file
       type: String,
       required: true
     },
-    thumbnail: {
+    thumbnail: {   //cloudinary file
       type: String,
       required: true
     },
-    title: {
+    title: {    
       type: String,
       required: true
     },
-    description: {
+    description: {   //cloudinary file
       type: String,
       required: true
     },
@@ -65,7 +65,7 @@ const videoSchema = new mongoose.Schema(
 AGGREGATE PAGINATION PLUGIN
 -----------------------------------------------------
 WHAT:
-- Aggregation queries me pagination add karta hai
+- Aggregation queries (alag-alag cheezon ko jod kar ek meaningful result banana)me pagination add karta hai
 - Page, limit, totalDocs jaisi info deta hai
 - Large video lists ko efficiently handle karta hai
 

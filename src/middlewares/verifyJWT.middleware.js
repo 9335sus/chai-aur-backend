@@ -23,17 +23,20 @@ import {User} from "../models/user.model.js";
 
  const verifyJWT = asyncHandler(async (req, res, next) => {
   try {
+    //  console.log("🍪 Cookies:", req.cookies);
+    // console.log("📨 Auth Header:", req.header("Authorization"));
     // WHAT: Access token cookies ya Authorization header se nikal rahe hain
     // WHY: Token dono jagah se aa sakta hai (cookie / Bearer)
     // WHEN: Har protected request ke start me
-    const accessToken =
+    const Token =
       req.cookies?.accessToken ||
-      req.header("Authorization")?.replace("Bearer ", "");
+     req.header("Authorization")?.replace("Bearer ", "")
 
+      console.log("🔑 Access Token:", Token);
     // WHAT: Access token missing check
     // WHY: Token ke bina user verify nahi ho sakta
     // WHEN: Request aate hi
-    if (!accessToken) {
+    if (!Token) {
       throw new ApiError(401, "Access token missing");
     }
 
@@ -41,16 +44,18 @@ import {User} from "../models/user.model.js";
     // WHY: Token valid aur tamper-free hai ya nahi check karna
     // WHEN: Token milne ke baad
     const decodedToken = jwt.verify(
-      accessToken,
+      Token,
       process.env.ACCESS_TOKEN_SECRET
     );
+    console.log("📦 Decoded Token:", decodedToken);
+  //  console.log("SECRET USED:", process.env.ACCESS_TOKEN_SECRET);
 
     // WHAT: Token se user ID nikal kar DB se user fetch kar rahe hain
     // WHY: Confirm karna ki user abhi bhi system me exist karta hai
     // WHEN: Token verify hone ke baad
     const user = await User.findById(decodedToken._id)
       .select("-password -refreshToken");
-
+       console.log("👤 User from DB:", user);
     // WHAT: User exist nahi karta to error
     // WHY: Deleted / invalid user ko access dena unsafe hai
     // WHEN: DB query ke baad
@@ -73,6 +78,8 @@ import {User} from "../models/user.model.js";
     // WHAT: Token verify fail hone par error handle
     // WHY: Expired / malformed token ko block karna
     // WHEN: jwt.verify ya DB query fail ho
+    console.log("❌ JWT VERIFY ERROR MESSAGE:", error.message);
+  console.log("❌ JWT VERIFY ERROR NAME:", error.name);
     throw new ApiError(
       401,
       "Unauthorized access",

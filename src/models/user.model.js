@@ -46,7 +46,7 @@ const userSchema = new mongoose.Schema(
       trim: true,
       index: true
     },
-    avatar: {
+    avatar: { 
       type: String,
       required: true
     },
@@ -91,9 +91,8 @@ WHEN:
 =====================================================
 */
 userSchema.pre("save", async function (next) {
-  if (!this.isModified("password")) return next();
-  this.password = await bcrypt.hash(this.password, 10);
-  next();
+  if (!this.isModified("password")) return 
+  this.password = await bcrypt.hash(this.password, 10); 
 });
 
 /*

@@ -38,7 +38,7 @@ WHEN:
 - index.js / server.js se server start ke time call hota hai
 =====================================================
 */
-const connectDB = async () => {
+const  connectDB = async () => {
   try {
     /*
       WHAT:
