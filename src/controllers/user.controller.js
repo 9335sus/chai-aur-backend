@@ -324,10 +324,11 @@ const loginUser = asyncHandler(async (req, res) => {
   // WHAT: Database me user search kar rahe hain
   // WHY: Verify karna hai ki user exist karta hai ya nahi
   // WHEN: Login attempt ke time
-  const user = await User.findOne({
-    $or: [{ username }, { email }],
-  });
+ const user = await User.findOne({
+  $or: [{ username: username?.toLowerCase() }, { email: email }],
+});
 
+  console.log("user info",user); 
   // WHAT: User exist nahi karta to error
   // WHY: Invalid login attempt ko block karna
   // WHEN: DB query ke baad
