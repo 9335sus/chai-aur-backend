@@ -130,4 +130,27 @@ if(!deletevideo){
   console.log("Video deleted:", deletevideo._id);
   res.status(200).json(new ApiResponse(true, "Video deleted successfully",deletevideo));
 });
-export { getAllVideo, publishVideo, getvideoById, updateVideo, deleteVideo };
+const togglePublishStatus=asyncHandler(async(req,res)=>{
+   const {videoId}=req.params;
+   if(!mongoose.Types.ObjectId.isValid(videoId)){
+    throw new ApiError(400,"Invalid videoId");
+   }
+   if(!req.user?._id){
+    throw new ApiError(401,"Unauthorized");
+   }
+    const video=await Video.findOne({
+        _id:videoId,
+        owner:req.user._id
+    })
+    console.log("video",video)
+    if(!video){
+        throw new ApiError(404,"Video not found or not authorized");
+    }
+    video.isPublished=!video.isPublished;
+    await video.save();
+    res.status(200).json(new ApiResponse(true,`Video ${video.isPublished?"published":"unpublished"} successfully`,video));
+
+
+
+});
+export { getAllVideo, publishVideo, getvideoById, updateVideo, deleteVideo,togglePublishStatus};
