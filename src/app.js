@@ -148,6 +148,9 @@ WHEN:
 import userRouter from './routes/user.routes.js';
 import commentRouter from './routes/comment.routes.js';
 import videoRouter from './routes/video.routes.js';
+import playlistRouter from './routes/playlist.routes.js';
+import likeRouter from './routes/like.router.js';
+import tweetRouter from './routes/Tweet.routes.js';
 /*
 =====================================================
 ROUTES DECLARATION / MOUNTING
@@ -172,7 +175,9 @@ WHEN:
 app.use("/api/v1/users", userRouter);
 app.use("/api/v1/comments", commentRouter);
 app.use("/api/v1/videos", videoRouter); // Example for video routes
-
+app.use("/api/v1/playlists", playlistRouter); // Example for playlist routes
+app.use("/api/v1/likes",likeRouter);
+app.use("/api/v1/tweets",tweetRouter);
 
 export { app };
  
