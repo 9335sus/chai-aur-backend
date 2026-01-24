@@ -151,6 +151,7 @@ import videoRouter from './routes/video.routes.js';
 import playlistRouter from './routes/playlist.routes.js';
 import likeRouter from './routes/like.router.js';
 import tweetRouter from './routes/Tweet.routes.js';
+import subscriptionRouter from './routes/subscription.route.js';
 /*
 =====================================================
 ROUTES DECLARATION / MOUNTING
@@ -178,6 +179,7 @@ app.use("/api/v1/videos", videoRouter); // Example for video routes
 app.use("/api/v1/playlists", playlistRouter); // Example for playlist routes
 app.use("/api/v1/likes",likeRouter);
 app.use("/api/v1/tweets",tweetRouter);
+app.use("/api/v1/subscriptions", subscriptionRouter);
 
 export { app };
  
